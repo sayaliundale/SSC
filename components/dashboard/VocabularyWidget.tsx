@@ -32,7 +32,7 @@ export default function VocabularyWidget() {
                     </div>
                 ) : (
                     preview.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <div key={item._id} className="flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 p-4">
                             <div>
                                 <p className="text-sm font-semibold text-slate-900">{item.word}</p>
                                 <p className="mt-1 text-sm text-slate-600">{item.synonym ?? item.meaning ?? 'Flashcard'}</p>

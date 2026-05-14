@@ -13,7 +13,7 @@ const SUBJECTS: Array<Note["subject"]> = ["Quant", "English", "Reasoning", "GK"]
 
 type NoteEditorProps = {
     note: Note | null;
-    onUpdateNote: (id: string, updates: Partial<Omit<Note, "id" | "createdAt">>) => void;
+    onUpdateNote: (id: string, updates: Partial<Omit<Note, "_id" | "createdAt">>) => void;
     onDeleteNote: (id: string) => void;
 };
 
@@ -31,7 +31,7 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
             if (!note) return;
             const html = editor.getHTML();
             if (html !== note.content) {
-                onUpdateNote(note.id, { content: html });
+                onUpdateNote(note._id, { content: html });
             }
         },
     });
@@ -50,7 +50,7 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
 
         editor.commands.setContent(note.content);
         editor.commands.focus();
-    }, [editor, note?.id]);
+    }, [editor, note?._id]);
 
     if (!note) {
         return (
@@ -63,7 +63,7 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
         );
     }
 
-    const setTitle = (value: string) => onUpdateNote(note.id, { title: value });
+    const setTitle = (value: string) => onUpdateNote(note._id, { title: value });
 
     return (
         <section className="flex h-full min-h-[calc(100vh-3rem)] flex-col rounded-3xl border border-slate-200 bg-white shadow-sm">
@@ -84,7 +84,7 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
                     </div>
                     <button
                         type="button"
-                        onClick={() => onDeleteNote(note.id)}
+                        onClick={() => onDeleteNote(note._id)}
                         className="inline-flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-100"
                     >
                         Delete
@@ -96,7 +96,7 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
                         Subject:
                         <select
                             value={note.subject}
-                            onChange={(event) => onUpdateNote(note.id, { subject: event.target.value as Note["subject"] })}
+                            onChange={(event) => onUpdateNote(note._id, { subject: event.target.value as Note["subject"] })}
                             className="rounded-xl border-none bg-transparent text-sm text-slate-900 outline-none"
                         >
                             {SUBJECTS.map((subject) => (

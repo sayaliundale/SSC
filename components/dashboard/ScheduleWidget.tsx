@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import WidgetCard from './WidgetCard';
-import { useTasks } from '../schedule/useTasks';
+import { useTasks } from '../../hooks/useTasks';
 
 const formatTime = (value: string) => {
     const [hours, minutes] = value.split(':').map(Number);
@@ -19,19 +19,33 @@ const priorityPill = (priority: string) => {
 };
 
 export default function ScheduleWidget() {
-    const { tasks } = useTasks();
+    const { tasks, loading, error } = useTasks();
     const sortedTasks = [...tasks].sort((a, b) => a.time.localeCompare(b.time));
+
+    if (error) {
+        return (
+            <WidgetCard title="Today’s Schedule" subtitle="Quick access to today’s task list" className="lg:row-span-2">
+                <div className="rounded-3xl border border-red-200 bg-red-50 p-6 text-center">
+                    <p className="text-red-700 text-sm">Failed to load schedule</p>
+                </div>
+            </WidgetCard>
+        );
+    }
 
     return (
         <WidgetCard title="Today’s Schedule" subtitle="Quick access to today’s task list" className="lg:row-span-2">
             <div className="space-y-4">
-                {sortedTasks.length === 0 ? (
+                {loading ? (
+                    <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
+                        Loading schedule...
+                    </div>
+                ) : sortedTasks.length === 0 ? (
                     <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 p-6 text-center text-slate-500">
                         No schedule items yet. Create tasks in the schedule page.
                     </div>
                 ) : (
                     sortedTasks.map((task) => (
-                        <div key={task.id} className="flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 p-4">
+                        <div key={task._id} className="flex items-center justify-between rounded-3xl border border-slate-200 bg-slate-50 p-4">
                             <div className="flex items-center gap-3">
                                 <input
                                     type="checkbox"
@@ -57,7 +71,7 @@ export default function ScheduleWidget() {
             </div>
 
             <div className="mt-6 flex items-center justify-between gap-3 rounded-3xl bg-slate-100 p-4">
-                <p className="text-sm text-slate-600">{tasks.length} task{tasks.length === 1 ? '' : 's'} planned today</p>
+                <p className="text-sm text-slate-600">{loading ? 'Loading...' : `${tasks.length} task${tasks.length === 1 ? '' : 's'} planned today`}</p>
                 <Link href="/schedule" className="rounded-2xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-slate-800">
                     Manage Tasks
                 </Link>

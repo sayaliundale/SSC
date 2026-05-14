@@ -23,37 +23,44 @@ const defaultStats: SubjectStats = {
 
 export default function SubjectsPage() {
     const [stats, setStats] = useState<SubjectStats>(defaultStats);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
-        const materialCounts = subjectConfig.reduce((acc, subject) => {
+        const fetchAllStats = async () => {
             try {
-                const raw = window.localStorage.getItem(`ssc_subject_${subject.key}`);
-                const parsed = raw ? JSON.parse(raw) : null;
-                acc[subject.key] = {
-                    notes: 0,
-                    materials: parsed?.materials?.length ?? 0,
-                };
-            } catch {
-                acc[subject.key] = { notes: 0, materials: 0 };
-            }
-            return acc;
-        }, {} as SubjectStats);
+                setLoading(true);
+                // Fetch all notes to count them by subject
+                const notesRes = await fetch("/api/notes");
+                const allNotes = notesRes.ok ? await notesRes.json() : [];
 
-        try {
-            const rawNotes = window.localStorage.getItem("ssc_notes");
-            const notes = rawNotes ? (JSON.parse(rawNotes) as Array<{ subject: string }>) : [];
-            const counts = notes.reduce((acc, note) => {
-                const key = Object.entries(SUBJECT_LABELS).find(([, label]) => label === note.subject)?.[0] as SubjectKey | undefined;
-                if (key) {
-                    acc[key].notes += 1;
+                const counts: SubjectStats = JSON.parse(JSON.stringify(defaultStats));
+
+                // Map notes to subjects
+                allNotes.forEach((note: any) => {
+                    const key = Object.entries(SUBJECT_LABELS).find(([, label]) => label === note.subject)?.[0] as SubjectKey | undefined;
+                    if (key && counts[key]) {
+                        counts[key].notes += 1;
+                    }
+                });
+
+                // Fetch each subject workspace to get material counts
+                for (const subject of subjectConfig) {
+                    const wsRes = await fetch(`/api/subjects/${subject.key}`);
+                    if (wsRes.ok) {
+                        const wsData = await wsRes.json();
+                        counts[subject.key].materials = wsData.materials?.length ?? 0;
+                    }
                 }
-                return acc;
-            }, materialCounts);
-            setStats(counts);
-        } catch {
-            setStats(materialCounts);
-        }
+
+                setStats(counts);
+            } catch (error) {
+                console.error("Failed to fetch subject stats:", error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchAllStats();
     }, []);
 
     return (
@@ -86,3 +93,4 @@ export default function SubjectsPage() {
         </main>
     );
 }
+

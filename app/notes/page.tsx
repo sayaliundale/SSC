@@ -15,7 +15,21 @@ export default function NotesPage() {
         deleteNote,
         setSelectedNoteId,
         updateNote,
+        loading,
+        error
     } = useNotes();
+
+    if (error) {
+        return (
+            <div className="flex min-h-screen items-center justify-center bg-slate-100 p-8 text-center">
+                <div className="max-w-md rounded-[2rem] border border-red-200 bg-white p-8 shadow-sm">
+                    <p className="text-xl font-semibold text-red-700">Error</p>
+                    <p className="mt-2 text-slate-600">{error}</p>
+                    <button onClick={() => window.location.reload()} className="mt-6 rounded-2xl bg-slate-900 px-6 py-2 text-sm font-semibold text-white">Retry</button>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <main className="min-h-screen bg-slate-100 px-4 py-6 sm:px-8 lg:px-12">

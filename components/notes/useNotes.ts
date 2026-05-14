@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
-type Subject = "Quant" | "English" | "Reasoning" | "GK";
+export type Subject = "Quant" | "English" | "Reasoning" | "GK";
 
 export type Note = {
-    id: string;
+    _id: string;
     title: string;
     content: string;
     subject: Subject;
@@ -13,51 +13,39 @@ export type Note = {
     updatedAt: string;
 };
 
-const STORAGE_KEY = "ssc_notes";
-
-const defaultNotes: Note[] = [];
-
-const buildNewNote = (): Note => {
-    const now = new Date().toISOString();
-    return {
-        id: typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
-            ? crypto.randomUUID()
-            : Math.random().toString(36).slice(2, 11),
-        title: "Untitled note",
-        content: "<p>Start typing your note...</p>",
-        subject: "Quant",
-        createdAt: now,
-        updatedAt: now,
-    };
-};
-
 export function useNotes() {
-    const [notes, setNotes] = useState<Note[]>(defaultNotes);
+    const [notes, setNotes] = useState<Note[]>([]);
     const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
     const [search, setSearch] = useState("");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    const fetchNotes = useCallback(async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await fetch("/api/notes");
+            if (!response.ok) {
+                throw new Error("Failed to fetch notes");
+            }
+            const data = await response.json();
+            setNotes(data);
+            if (data.length > 0 && !selectedNoteId) {
+                setSelectedNoteId(data[0]._id);
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred");
+        } finally {
+            setLoading(false);
+        }
+    }, [selectedNoteId]);
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
-        try {
-            const raw = window.localStorage.getItem(STORAGE_KEY);
-            if (!raw) return;
-            const parsed = JSON.parse(raw) as Note[];
-            if (Array.isArray(parsed)) {
-                setNotes(parsed);
-                setSelectedNoteId(parsed[0]?.id ?? null);
-            }
-        } catch (error) {
-            console.warn("Failed to load notes from localStorage", error);
-        }
+        fetchNotes();
     }, []);
 
-    useEffect(() => {
-        if (typeof window === "undefined") return;
-        window.localStorage.setItem(STORAGE_KEY, JSON.stringify(notes));
-    }, [notes]);
-
     const selectedNote = useMemo(
-        () => notes.find((note) => note.id === selectedNoteId) ?? null,
+        () => notes.find((note) => note._id === selectedNoteId) ?? null,
         [notes, selectedNoteId]
     );
 
@@ -71,26 +59,51 @@ export function useNotes() {
         );
     }, [notes, search]);
 
-    const createNote = () => {
-        const next = buildNewNote();
-        setNotes((current) => [next, ...current]);
-        setSelectedNoteId(next.id);
+    const createNote = async () => {
+        try {
+            const response = await fetch("/api/notes", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    title: "Untitled note",
+                    content: "<p>Start typing your note...</p>",
+                    subject: "Quant",
+                }),
+            });
+            if (!response.ok) throw new Error("Failed to create note");
+            const newNote = await response.json();
+            setNotes((current) => [newNote, ...current]);
+            setSelectedNoteId(newNote._id);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to create note");
+        }
     };
 
-    const deleteNote = (id: string) => {
-        setNotes((current) => {
-            const nextNotes = current.filter((note) => note.id !== id);
-            if (selectedNoteId === id) {
-                setSelectedNoteId(nextNotes[0]?.id ?? null);
-            }
-            return nextNotes;
-        });
+    const deleteNote = async (id: string) => {
+        try {
+            const response = await fetch(`/api/notes/${id}`, {
+                method: "DELETE",
+            });
+            if (!response.ok) throw new Error("Failed to delete note");
+            
+            setNotes((current) => {
+                const nextNotes = current.filter((note) => note._id !== id);
+                if (selectedNoteId === id) {
+                    setSelectedNoteId(nextNotes[0]?._id ?? null);
+                }
+                return nextNotes;
+            });
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to delete note");
+        }
     };
 
-    const updateNote = (id: string, updates: Partial<Omit<Note, "id" | "createdAt">>) => {
+    const updateNote = async (id: string, updates: Partial<Omit<Note, "_id" | "createdAt">>) => {
+        // Optimistic update
+        const previousNotes = [...notes];
         setNotes((current) =>
             current.map((note) =>
-                note.id === id
+                note._id === id
                     ? {
                         ...note,
                         ...updates,
@@ -99,6 +112,23 @@ export function useNotes() {
                     : note
             )
         );
+
+        try {
+            const response = await fetch(`/api/notes/${id}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updates),
+            });
+            if (!response.ok) throw new Error("Failed to update note");
+            const updatedNote = await response.json();
+            
+            setNotes((current) =>
+                current.map((note) => (note._id === id ? updatedNote : note))
+            );
+        } catch (err) {
+            setNotes(previousNotes); // Rollback
+            setError(err instanceof Error ? err.message : "Failed to update note");
+        }
     };
 
     return {
@@ -111,5 +141,8 @@ export function useNotes() {
         deleteNote,
         setSelectedNoteId,
         updateNote,
+        loading,
+        error,
     };
 }
+

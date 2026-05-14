@@ -1,4 +1,5 @@
 import WidgetCard from '../WidgetCard';
+import Link from 'next/link';
 
 const editIcon = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-4 w-4">
@@ -28,61 +29,44 @@ const bookmarkIcon = (
     </svg>
 );
 
-export function VocabularyWidget() {
-    const words = [
-        { word: 'Abandon', synonym: 'Forsake', antonym: 'Retain' },
-        { word: 'Vivid', synonym: 'Lucid', antonym: 'Dull' },
-        { word: 'Sparse', synonym: 'Scanty', antonym: 'Plentiful' },
-    ];
 
-    return (
-        <WidgetCard title="Today’s Vocabulary" subtitle="Review a short flashcard set">
-            <div className="space-y-4">
-                {words.map((item) => (
-                    <div key={item.word} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                        <div className="flex items-start justify-between gap-3">
-                            <div>
-                                <p className="text-lg font-semibold text-slate-900">{item.word}</p>
-                                <div className="mt-3 grid gap-2 text-sm text-slate-600 sm:grid-cols-2">
-                                    <p><span className="font-medium text-slate-800">Synonym:</span> {item.synonym}</p>
-                                    <p><span className="font-medium text-slate-800">Antonym:</span> {item.antonym}</p>
-                                </div>
-                            </div>
-                            <button className="rounded-2xl bg-slate-900 p-2 text-white transition hover:bg-slate-800" aria-label="Bookmark word">{bookmarkIcon}</button>
-                        </div>
-                        <div className="mt-4 flex items-center justify-between gap-3">
-                            <button className="rounded-2xl bg-white px-3 py-2 text-sm font-medium text-slate-800 shadow-sm transition hover:bg-slate-100">Mark as learned</button>
-                            <span className="text-xs uppercase tracking-[0.18em] text-slate-500">Flashcard</span>
-                        </div>
-                    </div>
-                ))}
-            </div>
-        </WidgetCard>
-    );
-}
+import { useNotes } from '../../notes/useNotes';
 
 export function QuickNotesWidget() {
-    const notes = [
-        'Revise Ratio & Percentage formulas',
-        'PYQ: 2023 synonyms revision',
-        'Important GK facts',
-    ];
+    const { notes, loading } = useNotes();
+    const previewNotes = notes.slice(0, 3);
+
+    // Helper to strip HTML tags for preview
+    const stripHtml = (html: string) => {
+        if (typeof window === 'undefined') return html;
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        return doc.body.textContent || "";
+    };
 
     return (
         <WidgetCard title="Quick Notes" subtitle="Capture study notes and reminders">
             <div className="space-y-4">
                 <div className="rounded-[2rem] bg-amber-50 p-5 shadow-sm">
                     <div className="mb-4 flex items-center justify-between gap-4">
-                        <p className="text-sm font-semibold text-slate-800">Study note</p>
+                        <p className="text-sm font-semibold text-slate-800">Study notes</p>
                         <span className="rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">Sticky</span>
                     </div>
                     <div className="space-y-3 text-sm text-slate-700">
-                        {notes.map((item, index) => (
-                            <div key={index} className="flex items-start gap-3">
-                                <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500">•</span>
-                                <p>{item}</p>
-                            </div>
-                        ))}
+                        {loading ? (
+                            <p className="text-slate-500">Loading notes...</p>
+                        ) : previewNotes.length === 0 ? (
+                            <p className="text-slate-500">No notes yet. Start writing to see them here.</p>
+                        ) : (
+                            previewNotes.map((item) => (
+                                <div key={item._id} className="flex items-start gap-3">
+                                    <span className="mt-1 inline-flex h-5 w-5 items-center justify-center rounded-full border border-slate-300 bg-white text-slate-500">•</span>
+                                    <div>
+                                        <p className="font-semibold text-slate-900">{item.title}</p>
+                                        <p className="mt-1 line-clamp-1 text-xs text-slate-600">{stripHtml(item.content)}</p>
+                                    </div>
+                                </div>
+                            ))
+                        )}
                     </div>
                     <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-500">
                         <span className="rounded-full bg-white px-3 py-1">✔ Checkbox</span>
@@ -90,11 +74,14 @@ export function QuickNotesWidget() {
                         <span className="rounded-full bg-white px-3 py-1">• Bullets</span>
                     </div>
                 </div>
-                <button className="w-full rounded-2xl bg-slate-900 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800">+ New Note</button>
+                <Link href="/notes" className="block w-full rounded-2xl bg-slate-900 px-4 py-3 text-center text-sm font-semibold text-white transition hover:bg-slate-800">
+                    Open Notes
+                </Link>
             </div>
         </WidgetCard>
     );
 }
+
 
 export function CurrentAffairsWidget() {
     const items = [

@@ -22,11 +22,11 @@ export default function VocabularyPage() {
 
     useEffect(() => {
         if (!selectedId && items.length > 0) {
-            setSelectedId(items[0].id);
+            setSelectedId(items[0]._id);
         }
     }, [items, selectedId]);
 
-    const selectedItem = items.find((item) => item.id === selectedId) ?? items[0];
+    const selectedItem = items.find((item) => item._id === selectedId) ?? items[0];
 
     return (
         <section className="space-y-6">

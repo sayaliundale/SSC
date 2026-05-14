@@ -1,25 +1,38 @@
 'use client';
 
 import { useState } from 'react';
-import type { TaskPriority } from './useTasks';
+import type { TaskPriority } from '../../models/Task';
 
 type AddTaskFormProps = {
-    onAddTask: (task: { title: string; time: string; priority: TaskPriority }) => void;
+    onAddTask: (task: { title: string; time: string; priority: TaskPriority; date: string }) => Promise<void>;
 };
 
 export default function AddTaskForm({ onAddTask }: AddTaskFormProps) {
     const [title, setTitle] = useState('');
     const [time, setTime] = useState('08:00');
     const [priority, setPriority] = useState<TaskPriority>('medium');
+    const [loading, setLoading] = useState(false);
 
-    const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault();
-        if (!title.trim()) return;
+        if (!title.trim() || loading) return;
 
-        onAddTask({ title: title.trim(), time: time || '08:00', priority });
-        setTitle('');
-        setTime('08:00');
-        setPriority('medium');
+        setLoading(true);
+        try {
+            await onAddTask({
+                title: title.trim(),
+                time: time || '08:00',
+                priority,
+                date: new Date().toISOString().split('T')[0], // Today's date
+            });
+            setTitle('');
+            setTime('08:00');
+            setPriority('medium');
+        } catch (error) {
+            console.error('Failed to add task:', error);
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -65,9 +78,10 @@ export default function AddTaskForm({ onAddTask }: AddTaskFormProps) {
 
             <button
                 type="submit"
-                className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                disabled={loading}
+                className="w-full rounded-2xl bg-slate-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed"
             >
-                Add Task
+                {loading ? 'Adding...' : 'Add Task'}
             </button>
         </form>
     );

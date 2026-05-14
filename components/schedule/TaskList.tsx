@@ -1,6 +1,6 @@
 'use client';
 
-import type { Task } from './useTasks';
+import type { TaskDocument } from '../../models/Task';
 import TaskItem from './TaskItem';
 
 const parseTime = (value: string) => {
@@ -19,10 +19,10 @@ const formatTimeLabel = (value: string) => {
 };
 
 type TaskListProps = {
-    tasks: Task[];
-    onToggle: (id: string) => void;
-    onUpdate: (id: string, updates: Partial<Omit<Task, 'id' | 'date'>>) => void;
-    onDelete: (id: string) => void;
+    tasks: TaskDocument[];
+    onToggle: (id: string) => Promise<void>;
+    onUpdate: (id: string, updates: Partial<Pick<TaskDocument, 'title' | 'time' | 'priority'>>) => Promise<void>;
+    onDelete: (id: string) => Promise<void>;
 };
 
 export default function TaskList({ tasks, onToggle, onUpdate, onDelete }: TaskListProps) {
@@ -34,7 +34,7 @@ export default function TaskList({ tasks, onToggle, onUpdate, onDelete }: TaskLi
         );
     }
 
-    const grouped = tasks.reduce<Record<string, Task[]>>((acc, task) => {
+    const grouped = tasks.reduce<Record<string, TaskDocument[]>>((acc, task) => {
         if (!acc[task.time]) acc[task.time] = [];
         acc[task.time].push(task);
         return acc;
@@ -51,7 +51,7 @@ export default function TaskList({ tasks, onToggle, onUpdate, onDelete }: TaskLi
                     </div>
                     <div className="space-y-4">
                         {grouped[time].map((task) => (
-                            <TaskItem key={task.id} task={task} onToggle={onToggle} onUpdate={onUpdate} onDelete={onDelete} />
+                            <TaskItem key={task._id.toString()} task={task} onToggle={onToggle} onUpdate={onUpdate} onDelete={onDelete} />
                         ))}
                     </div>
                 </div>

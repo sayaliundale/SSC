@@ -107,10 +107,10 @@ export default function VocabList({ items, selectedId, onSelect }: VocabListProp
                 <div className="divide-y divide-slate-200 bg-white">
                     {filteredItems.map((item) => (
                         <button
-                            key={item.id}
+                            key={item._id}
                             type="button"
-                            onClick={() => onSelect(item.id)}
-                            className={`w-full px-4 py-4 text-left transition hover:bg-slate-50 ${selectedId === item.id ? 'bg-slate-100' : ''}`}
+                            onClick={() => onSelect(item._id)}
+                            className={`w-full px-4 py-4 text-left transition hover:bg-slate-50 ${selectedId === item._id ? 'bg-slate-100' : ''}`}
                         >
                             <div className="grid gap-0 text-sm sm:grid-cols-[2fr_1fr_1fr_1fr]">
                                 <div>

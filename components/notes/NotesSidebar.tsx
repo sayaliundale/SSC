@@ -58,12 +58,12 @@ export function NotesSidebar({
                     </div>
                 ) : (
                     notes.map((note) => {
-                        const active = note.id === selectedNoteId;
+                        const active = note._id === selectedNoteId;
                         return (
                             <button
-                                key={note.id}
+                                key={note._id}
                                 type="button"
-                                onClick={() => onSelectNote(note.id)}
+                                onClick={() => onSelectNote(note._id)}
                                 className={`group flex w-full items-start justify-between gap-3 rounded-3xl border px-4 py-4 text-left transition ${active
                                         ? "border-slate-900 bg-slate-100 shadow-sm"
                                         : "border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50"
@@ -80,7 +80,7 @@ export function NotesSidebar({
                                     type="button"
                                     onClick={(event) => {
                                         event.stopPropagation();
-                                        onDeleteNote(note.id);
+                                        onDeleteNote(note._id);
                                     }}
                                     className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                                 >

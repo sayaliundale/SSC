@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 export type SubjectKey = "quant" | "english" | "reasoning" | "gk";
 
@@ -43,18 +43,9 @@ export const SUBJECT_LABELS: Record<SubjectKey, string> = {
     gk: "GK",
 };
 
-const STORAGE_KEYS: Record<SubjectKey, string> = {
-    quant: "ssc_subject_quant",
-    english: "ssc_subject_english",
-    reasoning: "ssc_subject_reasoning",
-    gk: "ssc_subject_gk",
-};
-
-const subjectNoteKey = (subject: SubjectKey) => STORAGE_KEYS[subject];
-
 const generateId = () => `${Math.random().toString(36).slice(2, 10)}_${Date.now()}`;
 
-const createDefaultWorkspace = (subject: SubjectKey): SubjectWorkspaceData => ({
+const createDefaultWorkspace = (): SubjectWorkspaceData => ({
     materials: [],
     links: [],
     revision: [
@@ -77,58 +68,59 @@ const createDefaultWorkspace = (subject: SubjectKey): SubjectWorkspaceData => ({
     weakTopics: ["Time management", "Grammar rules", "Logical puzzles"],
 });
 
-const loadNotes = (subject: SubjectKey) => {
-    if (typeof window === "undefined") return [];
-    try {
-        const raw = window.localStorage.getItem("ssc_notes");
-        if (!raw) return [];
-        const parsed = JSON.parse(raw) as Array<{ id: string; title: string; subject: string; updatedAt: string }>;
-        const subjectLabel = SUBJECT_LABELS[subject];
-        return parsed
-            .filter((note) => note.subject === subjectLabel)
-            .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-            .slice(0, 6);
-    } catch {
-        return [];
-    }
-};
-
 export function useSubjectWorkspace(subject: SubjectKey) {
-    const [workspace, setWorkspace] = useState<SubjectWorkspaceData>(() => createDefaultWorkspace(subject));
-    const [notes, setNotes] = useState(loadNotes(subject));
+    const [workspace, setWorkspace] = useState<SubjectWorkspaceData>(createDefaultWorkspace());
+    const [notes, setNotes] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        if (typeof window === "undefined") return;
+    const fetchData = useCallback(async () => {
         try {
-            const raw = window.localStorage.getItem(subjectNoteKey(subject));
-            if (raw) {
-                setWorkspace(JSON.parse(raw) as SubjectWorkspaceData);
-            } else {
-                const initial = createDefaultWorkspace(subject);
-                window.localStorage.setItem(subjectNoteKey(subject), JSON.stringify(initial));
-                setWorkspace(initial);
-            }
-        } catch {
-            setWorkspace(createDefaultWorkspace(subject));
+            setLoading(true);
+            setError(null);
+            
+            // Fetch workspace data
+            const wsResponse = await fetch(`/api/subjects/${subject}`);
+            if (!wsResponse.ok) throw new Error("Failed to fetch workspace");
+            const wsData = await wsResponse.json();
+            setWorkspace(wsData);
+
+            // Fetch notes for this subject
+            const notesResponse = await fetch("/api/notes");
+            if (!notesResponse.ok) throw new Error("Failed to fetch notes");
+            const allNotes = await notesResponse.json();
+            const subjectLabel = SUBJECT_LABELS[subject];
+            const filteredNotes = allNotes
+                .filter((note: any) => note.subject === subjectLabel)
+                .sort((a: any, b: any) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
+                .slice(0, 6);
+            setNotes(filteredNotes);
+
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "An error occurred");
+        } finally {
+            setLoading(false);
         }
-
-        setNotes(loadNotes(subject));
     }, [subject]);
 
     useEffect(() => {
-        if (typeof window === "undefined") return;
-        window.localStorage.setItem(subjectNoteKey(subject), JSON.stringify(workspace));
-    }, [subject, workspace]);
+        fetchData();
+    }, [fetchData]);
 
-    useEffect(() => {
-        const handleStorage = (event: StorageEvent) => {
-            if (event.key === "ssc_notes" && event.newValue) {
-                setNotes(loadNotes(subject));
-            }
-        };
-        window.addEventListener("storage", handleStorage);
-        return () => window.removeEventListener("storage", handleStorage);
-    }, [subject]);
+    const saveWorkspace = async (updatedWs: SubjectWorkspaceData) => {
+        try {
+            const response = await fetch(`/api/subjects/${subject}`, {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(updatedWs),
+            });
+            if (!response.ok) throw new Error("Failed to save workspace");
+            const data = await response.json();
+            setWorkspace(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Failed to save workspace");
+        }
+    };
 
     const addMaterials = (files: FileList) => {
         const uploads: SubjectMaterial[] = Array.from(files).map((file) => ({
@@ -137,18 +129,20 @@ export function useSubjectWorkspace(subject: SubjectKey) {
             type: file.type.includes("pdf") ? "pdf" : "image",
             uploadedAt: new Date().toISOString(),
         }));
-        setWorkspace((current) => ({
-            ...current,
-            materials: [...uploads, ...current.materials],
+        const next = {
+            ...workspace,
+            materials: [...uploads, ...workspace.materials],
             lastStudied: new Date().toISOString(),
-        }));
+        };
+        saveWorkspace(next);
     };
 
     const removeMaterial = (id: string) => {
-        setWorkspace((current) => ({
-            ...current,
-            materials: current.materials.filter((item) => item.id !== id),
-        }));
+        const next = {
+            ...workspace,
+            materials: workspace.materials.filter((item) => item.id !== id),
+        };
+        saveWorkspace(next);
     };
 
     const addLink = (link: Omit<SubjectLink, "id" | "createdAt">) => {
@@ -157,17 +151,19 @@ export function useSubjectWorkspace(subject: SubjectKey) {
             createdAt: new Date().toISOString(),
             ...link,
         };
-        setWorkspace((current) => ({
-            ...current,
-            links: [next, ...current.links],
-        }));
+        const updated = {
+            ...workspace,
+            links: [next, ...workspace.links],
+        };
+        saveWorkspace(updated);
     };
 
     const removeLink = (id: string) => {
-        setWorkspace((current) => ({
-            ...current,
-            links: current.links.filter((item) => item.id !== id),
-        }));
+        const next = {
+            ...workspace,
+            links: workspace.links.filter((item) => item.id !== id),
+        };
+        saveWorkspace(next);
     };
 
     const addRevision = (revision: Omit<RevisionItem, "id" | "createdAt">) => {
@@ -176,17 +172,19 @@ export function useSubjectWorkspace(subject: SubjectKey) {
             createdAt: new Date().toISOString(),
             ...revision,
         };
-        setWorkspace((current) => ({
-            ...current,
-            revision: [next, ...current.revision],
-        }));
+        const updated = {
+            ...workspace,
+            revision: [next, ...workspace.revision],
+        };
+        saveWorkspace(updated);
     };
 
     const removeRevision = (id: string) => {
-        setWorkspace((current) => ({
-            ...current,
-            revision: current.revision.filter((item) => item.id !== id),
-        }));
+        const next = {
+            ...workspace,
+            revision: workspace.revision.filter((item) => item.id !== id),
+        };
+        saveWorkspace(next);
     };
 
     const totalNotes = useMemo(() => notes.length, [notes]);
@@ -199,6 +197,8 @@ export function useSubjectWorkspace(subject: SubjectKey) {
         notes,
         totalNotes,
         totalMaterials,
+        loading,
+        error,
         addMaterials,
         removeMaterial,
         addLink,
@@ -207,3 +207,4 @@ export function useSubjectWorkspace(subject: SubjectKey) {
         removeRevision,
     };
 }
+

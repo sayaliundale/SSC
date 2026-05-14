@@ -32,7 +32,7 @@ export default function DailyVocab({ items, onLearned, onDifficult, onToggleBook
                 <div className="space-y-4">
                     {items.map((item) => (
                         <VocabCard
-                            key={item.id}
+                            key={item._id}
                             item={item}
                             onLearned={onLearned}
                             onDifficult={onDifficult}

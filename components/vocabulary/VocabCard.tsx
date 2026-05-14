@@ -23,7 +23,7 @@ export default function VocabCard({ item, onLearned, onDifficult, onToggleBookma
                 <div>
                     <button
                         type="button"
-                        onClick={() => onSelect?.(item.id)}
+                        onClick={() => onSelect?.(item._id)}
                         className="text-left"
                     >
                         <p className="text-xl font-semibold text-slate-900">{item.word}</p>
@@ -32,7 +32,7 @@ export default function VocabCard({ item, onLearned, onDifficult, onToggleBookma
                 </div>
                 <button
                     type="button"
-                    onClick={() => onToggleBookmark(item.id)}
+                    onClick={() => onToggleBookmark(item._id)}
                     className={`inline-flex h-9 w-9 items-center justify-center rounded-2xl border ${item.bookmarked ? 'border-slate-900 bg-slate-900 text-white' : 'border-slate-200 bg-white text-slate-400'} transition`}
                     aria-label="Toggle bookmark"
                 >
@@ -51,14 +51,14 @@ export default function VocabCard({ item, onLearned, onDifficult, onToggleBookma
             <div className="mt-4 flex flex-wrap gap-3">
                 <button
                     type="button"
-                    onClick={() => onLearned(item.id)}
+                    onClick={() => onLearned(item._id)}
                     className="rounded-2xl bg-emerald-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-emerald-800"
                 >
                     Mark as learned
                 </button>
                 <button
                     type="button"
-                    onClick={() => onDifficult(item.id)}
+                    onClick={() => onDifficult(item._id)}
                     className="rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                 >
                     Mark as difficult

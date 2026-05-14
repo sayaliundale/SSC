@@ -7,7 +7,7 @@ export type VocabSource = 'PYQ' | 'manual' | 'imported';
 export type VocabDifficulty = 'easy' | 'medium' | 'hard';
 
 export type VocabularyItem = {
-    id: string;
+    _id: string;
     word: string;
     type: VocabType;
     meaning?: string;
@@ -23,149 +23,7 @@ export type VocabularyItem = {
     lastReviewed?: string;
 };
 
-const STORAGE_KEY = 'ssc_vocab_data';
-
 const todayString = () => new Date().toISOString().slice(0, 10);
-
-const defaultVocabulary: VocabularyItem[] = [
-    {
-        id: 'vocab-1',
-        word: 'Abandon',
-        type: 'synonym',
-        meaning: 'Give up completely',
-        synonym: 'Forsake',
-        antonym: 'Retain',
-        example: 'She had to abandon the plan after the setback.',
-        source: 'PYQ',
-        year: 2023,
-        difficulty: 'medium',
-        mastered: false,
-        bookmarked: true,
-        revisionCount: 1,
-        lastReviewed: '2026-05-10',
-    },
-    {
-        id: 'vocab-2',
-        word: 'Candid',
-        type: 'synonym',
-        meaning: 'Truthful and straightforward',
-        synonym: 'Frank',
-        antonym: 'Evasive',
-        example: 'He was candid about his past.',
-        source: 'manual',
-        difficulty: 'easy',
-        mastered: true,
-        bookmarked: false,
-        revisionCount: 2,
-        lastReviewed: '2026-05-08',
-    },
-    {
-        id: 'vocab-3',
-        word: 'Break the ice',
-        type: 'idiom',
-        meaning: 'Make people feel more comfortable',
-        synonym: 'Initiate conversation',
-        example: 'He told a joke to break the ice.',
-        source: 'manual',
-        difficulty: 'easy',
-        mastered: false,
-        bookmarked: false,
-        revisionCount: 0,
-    },
-    {
-        id: 'vocab-4',
-        word: 'Peripheral',
-        type: 'one-word',
-        meaning: 'Related to the outer edge',
-        synonym: 'Marginal',
-        antonym: 'Central',
-        example: 'The issue was peripheral to the main problem.',
-        source: 'manual',
-        difficulty: 'medium',
-        mastered: false,
-        bookmarked: false,
-        revisionCount: 0,
-    },
-    {
-        id: 'vocab-5',
-        word: 'Apathetic',
-        type: 'antonym',
-        meaning: 'Showing little emotion or interest',
-        synonym: 'Indifferent',
-        antonym: 'Passionate',
-        example: 'The audience remained apathetic.',
-        source: 'PYQ',
-        year: 2024,
-        difficulty: 'hard',
-        mastered: false,
-        bookmarked: true,
-        revisionCount: 2,
-        lastReviewed: '2026-05-11',
-    },
-    {
-        id: 'vocab-6',
-        word: 'Concur',
-        type: 'synonym',
-        meaning: 'Agree with someone or something',
-        synonym: 'Agree',
-        antonym: 'Disagree',
-        example: 'Most experts concur with the findings.',
-        source: 'manual',
-        difficulty: 'easy',
-        mastered: true,
-        bookmarked: false,
-        revisionCount: 3,
-        lastReviewed: '2026-05-07',
-    },
-    {
-        id: 'vocab-7',
-        word: 'Vindicate',
-        type: 'one-word',
-        meaning: 'Clear from blame or suspicion',
-        synonym: 'Exonerate',
-        antonym: 'Convict',
-        example: 'The evidence served to vindicate her.',
-        source: 'manual',
-        difficulty: 'hard',
-        mastered: false,
-        bookmarked: false,
-        revisionCount: 0,
-    },
-    {
-        id: 'vocab-8',
-        word: 'Perplex',
-        type: 'synonym',
-        meaning: 'Cause to be puzzled',
-        synonym: 'Baffle',
-        antonym: 'Clarify',
-        example: 'The question perplexed the students.',
-        source: 'manual',
-        difficulty: 'medium',
-        mastered: false,
-        bookmarked: false,
-        revisionCount: 0,
-    },
-];
-
-const loadStorage = (): VocabularyItem[] => {
-    if (typeof window === 'undefined') return defaultVocabulary;
-    try {
-        const raw = window.localStorage.getItem(STORAGE_KEY);
-        return raw ? (JSON.parse(raw) as VocabularyItem[]) : defaultVocabulary;
-    } catch {
-        return defaultVocabulary;
-    }
-};
-
-const saveStorage = (items: VocabularyItem[]) => {
-    if (typeof window === 'undefined') return;
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-};
-
-const normalizeDate = (value: string) => {
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? undefined : date.toISOString().slice(0, 10);
-};
 
 const daysSince = (dateString: string) => {
     const date = new Date(dateString);
@@ -188,106 +46,116 @@ const needsReview = (item: VocabularyItem) => {
     return item.revisionCount > 0 && days >= 1;
 };
 
-const createId = () => `vocab-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-
 export function useVocabulary() {
     const [items, setItems] = useState<VocabularyItem[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        setItems(loadStorage());
+    const fetchVocab = useCallback(async () => {
+        try {
+            setLoading(true);
+            const response = await fetch('/api/vocabulary');
+            if (!response.ok) throw new Error('Failed to fetch vocabulary');
+            const data = await response.json();
+            setItems(data);
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        } finally {
+            setLoading(false);
+        }
     }, []);
 
     useEffect(() => {
-        if (items.length > 0) saveStorage(items);
-    }, [items]);
-
-    useEffect(() => {
-        const handleStorage = (event: StorageEvent) => {
-            if (event.key === STORAGE_KEY) {
-                setItems(loadStorage());
-            }
-        };
-        window.addEventListener('storage', handleStorage);
-        return () => window.removeEventListener('storage', handleStorage);
-    }, []);
+        fetchVocab();
+    }, [fetchVocab]);
 
     const addItem = useCallback(
-        (item: Omit<VocabularyItem, 'id' | 'mastered' | 'bookmarked' | 'revisionCount' | 'lastReviewed'>) => {
-            setItems((current) => [
-                ...current,
-                {
-                    ...item,
-                    id: createId(),
-                    mastered: false,
-                    bookmarked: false,
-                    revisionCount: 0,
-                },
-            ]);
-        },
-        []
-    );
-
-    const addItems = useCallback(
-        (newItems: Array<Omit<VocabularyItem, 'id' | 'mastered' | 'bookmarked' | 'revisionCount' | 'lastReviewed'>>) => {
-            setItems((current) => [
-                ...current,
-                ...newItems.map((item) => ({
-                    ...item,
-                    id: createId(),
-                    mastered: false,
-                    bookmarked: false,
-                    revisionCount: 0,
-                })),
-            ]);
-        },
-        []
-    );
-
-    const updateItem = useCallback((id: string, updates: Partial<Omit<VocabularyItem, 'id'>>) => {
-        setItems((current) =>
-            current.map((item) => (item.id === id ? { ...item, ...updates } : item))
-        );
-    }, []);
-
-    const toggleBookmark = useCallback((id: string) => {
-        setItems((current) =>
-            current.map((item) => (item.id === id ? { ...item, bookmarked: !item.bookmarked } : item))
-        );
-    }, []);
-
-    const markAsLearned = useCallback((id: string) => {
-        setItems((current) =>
-            current.map((item) =>
-                item.id === id
-                    ? {
-                        ...item,
-                        mastered: true,
-                        revisionCount: item.revisionCount + 1,
-                        lastReviewed: todayString(),
-                    }
-                    : item
-            )
-        );
-    }, []);
-
-    const markAsDifficult = useCallback((id: string) => {
-        setItems((current) =>
-            current.map((item) =>
-                item.id === id
-                    ? {
+        async (item: Omit<VocabularyItem, '_id' | 'mastered' | 'bookmarked' | 'revisionCount' | 'lastReviewed'>) => {
+            try {
+                const response = await fetch('/api/vocabulary', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
                         ...item,
                         mastered: false,
-                        revisionCount: item.revisionCount + 1,
-                        lastReviewed: todayString(),
-                        difficulty: 'hard',
-                    }
-                    : item
-            )
-        );
-    }, []);
+                        bookmarked: false,
+                        revisionCount: 0,
+                    }),
+                });
+                if (!response.ok) throw new Error('Failed to add item');
+                const newItem = await response.json();
+                setItems((current) => [...current, newItem]);
+                return newItem;
+            } catch (err) {
+                setError(err instanceof Error ? err.message : 'Failed to add item');
+            }
+        },
+        []
+    );
 
-    const deleteItem = useCallback((id: string) => {
-        setItems((current) => current.filter((item) => item.id !== id));
+    const updateItem = useCallback(async (id: string, updates: Partial<Omit<VocabularyItem, '_id'>>) => {
+        const previousItems = [...items];
+        setItems((current) =>
+            current.map((item) => (item._id === id ? { ...item, ...updates } : item))
+        );
+
+        try {
+            const response = await fetch(`/api/vocabulary/${id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates),
+            });
+            if (!response.ok) throw new Error('Failed to update item');
+            const updatedItem = await response.json();
+            setItems((current) =>
+                current.map((item) => (item._id === id ? updatedItem : item))
+            );
+        } catch (err) {
+            setItems(previousItems);
+            setError(err instanceof Error ? err.message : 'Failed to update item');
+        }
+    }, [items]);
+
+    const toggleBookmark = useCallback((id: string) => {
+        const item = items.find((i) => i._id === id);
+        if (item) {
+            updateItem(id, { bookmarked: !item.bookmarked });
+        }
+    }, [items, updateItem]);
+
+    const markAsLearned = useCallback((id: string) => {
+        const item = items.find((i) => i._id === id);
+        if (item) {
+            updateItem(id, {
+                mastered: true,
+                revisionCount: (item.revisionCount || 0) + 1,
+                lastReviewed: todayString(),
+            });
+        }
+    }, [items, updateItem]);
+
+    const markAsDifficult = useCallback((id: string) => {
+        const item = items.find((i) => i._id === id);
+        if (item) {
+            updateItem(id, {
+                mastered: false,
+                revisionCount: (item.revisionCount || 0) + 1,
+                lastReviewed: todayString(),
+                difficulty: 'hard',
+            });
+        }
+    }, [items, updateItem]);
+
+    const deleteItem = useCallback(async (id: string) => {
+        try {
+            const response = await fetch(`/api/vocabulary/${id}`, {
+                method: 'DELETE',
+            });
+            if (!response.ok) throw new Error('Failed to delete item');
+            setItems((current) => current.filter((item) => item._id !== id));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to delete item');
+        }
     }, []);
 
     const dailyVocab = useMemo(() => {
@@ -304,11 +172,11 @@ export function useVocabulary() {
         const selected = sortedUnmastered.slice(0, targetUnmastered);
         const remaining = limit - selected.length;
 
-        const revisionCandidates = revisionPool.filter((item) => !selected.some((selectedItem) => selectedItem.id === item.id));
+        const revisionCandidates = revisionPool.filter((item) => !selected.some((selectedItem) => selectedItem._id === item._id));
         selected.push(...revisionCandidates.slice(0, remaining));
 
         if (selected.length < limit) {
-            const remainingItems = items.filter((item) => !selected.some((selectedItem) => selectedItem.id === item.id));
+            const remainingItems = items.filter((item) => !selected.some((selectedItem) => selectedItem._id === item._id));
             selected.push(...remainingItems.slice(0, limit - selected.length));
         }
 
@@ -325,20 +193,14 @@ export function useVocabulary() {
         [items]
     );
 
-    const filtered = useMemo(
-        () => ({
-            items,
-            dailyVocab,
-            bookmarkCount,
-            revisionDueCount,
-        }),
-        [items, dailyVocab, bookmarkCount, revisionDueCount]
-    );
-
     return {
-        ...filtered,
+        items,
+        dailyVocab,
+        bookmarkCount,
+        revisionDueCount,
+        loading,
+        error,
         addItem,
-        addItems,
         updateItem,
         deleteItem,
         toggleBookmark,
@@ -346,3 +208,4 @@ export function useVocabulary() {
         markAsDifficult,
     };
 }
+

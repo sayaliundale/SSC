@@ -37,7 +37,7 @@ export default function VocabDetail({ item, onLearned, onDifficult, onToggleBook
                 </div>
                 <button
                     type="button"
-                    onClick={() => onToggleBookmark(item.id)}
+                    onClick={() => onToggleBookmark(item._id)}
                     className={`inline-flex h-11 items-center justify-center rounded-2xl px-4 py-3 text-sm font-semibold transition ${item.bookmarked ? 'bg-slate-900 text-white' : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'}`}
                 >
                     {item.bookmarked ? 'Bookmarked' : 'Bookmark'}
@@ -77,14 +77,14 @@ export default function VocabDetail({ item, onLearned, onDifficult, onToggleBook
             <div className="mt-5 grid gap-3 sm:grid-cols-2">
                 <button
                     type="button"
-                    onClick={() => onLearned(item.id)}
+                    onClick={() => onLearned(item._id)}
                     className="rounded-2xl bg-emerald-900 px-5 py-3 text-sm font-semibold text-white transition hover:bg-emerald-800"
                 >
                     Mark as learned
                 </button>
                 <button
                     type="button"
-                    onClick={() => onDifficult(item.id)}
+                    onClick={() => onDifficult(item._id)}
                     className="rounded-2xl border border-rose-200 bg-rose-50 px-5 py-3 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
                 >
                     Mark as difficult
