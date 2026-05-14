@@ -38,6 +38,11 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
 
     useEffect(() => {
         if (!editor) return;
+        editor.setEditable(Boolean(note));
+    }, [editor, note]);
+
+    useEffect(() => {
+        if (!editor) return;
         if (!note) {
             editor.commands.clearContent();
             return;
@@ -129,7 +134,7 @@ export function NoteEditor({ note, onUpdateNote, onDeleteNote }: NoteEditorProps
             </div>
 
             <div className="flex-1 overflow-hidden p-6">
-                <div className="h-full min-h-[400px] rounded-3xl border border-slate-200 bg-slate-50 p-6 text-slate-900 shadow-inner">
+                <div className="h-full min-h-[400px] bg-slate-50 p-6 text-slate-900">
                     <EditorContent editor={editor} className="min-h-[360px] w-full focus:outline-none" />
                 </div>
             </div>
@@ -153,7 +158,7 @@ function ToolbarButton({
             type="button"
             aria-label={ariaLabel}
             onClick={onClick}
-            className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition ${active ? "border-slate-900 bg-slate-900 text-white" : "border-transparent text-slate-500 hover:border-slate-300 hover:bg-white hover:text-slate-900"
+            className={`inline-flex h-10 w-10 items-center justify-center rounded-2xl border transition ${active ? "border-slate-900 bg-slate-900 text-white" : "border-transparent text-slate-500 hover:text-slate-900"
                 }`}
         >
             {children}
